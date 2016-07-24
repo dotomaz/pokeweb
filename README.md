@@ -4,13 +4,13 @@ Pokeweb is a simple web interface for searching nearby pokemon. It is based on t
 
 ## How to use
 
-* To use the app you need to install the latest vrsion of node and clone the repo to your disk. After that you run:
+* To use the app you need to install the latest version of node and clone the repo to your disk. After that you run:
 
 `npm update`
 
 * You need to rename .env.example to .env. Then open the file in your favorite text editor and enter your login informations.
 
-* The web is runninh over secure ssl conection only. That's why you need to get a SSL server certificate. You can get one for free at [letsencrypt](https://letsencrypt.org/). Onece you haveyour certificate place cert.pem, privkey.pem and fullchain.pem in ssl folder.
+* The web is running over secure ssl connection only. That's why you need to get a SSL server certificate. You can get one for free at [letsencrypt](https://letsencrypt.org/). Once you have your certificate place cert.pem, privkey.pem and fullchain.pem in ssl folder.
 
 * run the app with:
 
