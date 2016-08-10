@@ -1,52 +1,96 @@
 var PokemonGO = require('pokemon-go-node-api');
 var s2 = require('s2geometry-node');
 
-var latDeltaMeters = 150;
-var lngDeltaMeters = 86.6;
-var metersPerDegree = 111111;
+var rad = function(x){
+	return x * Math.PI / 180;
+}
 
-var latDeltaDegrees = latDeltaMeters / metersPerDegree;
+var deg = function(x){
+	return x * 180 / Math.PI;
+}
 
-var lngDeltaDegrees = function(lat){
-	return lngDeltaMeters / ( metersPerDegree * Math.cos( ( lat * Math.PI ) / 180) );
-};	
+var newLocation = function(pos, distance, bearing){
+
+	R = 6378.1;
+	var rBearing = bearing * Math.PI / 180;
+	var rPos = {
+		lat: rad(pos.lat),
+		lng: rad(pos.lng)
+	};
+
+	var lat = Math.asin( 
+				Math.sin(rPos.lat)*Math.cos(distance/R) + 
+				Math.cos(rPos.lat)*Math.sin(distance/R)*Math.cos(rBearing)
+			); 
+	var lng = rPos.lng + Math.atan2(
+							Math.sin(rBearing)*Math.sin(distance/R)*Math.cos(rPos.lat),
+        					Math.cos(distance/R)-Math.sin(rPos.lat)*Math.sin(lat)
+        				);
+	return { lat:deg(lat), lng:deg(lng)};
+}
  
 var getScanPoints = function(startPoint, steps){
+
+	const NORTH = 0;
+	const NORTH_EAST = 30;
+	const EAST = 90;
+	const SOUTH_EAST = 150;
+	const SOUTH = 180;
+	const SOUTH_WEST = 210;
+	const WEST = 270;
+	const NORTH_WEST = 330;
+	
+	
+
+	var dist = 0.10;
+	var xdist = Math.sqrt(3)*0.1;
+	var ydist = 3 * ( xdist / 2 )	
+
 	var points = [];
 	var ring = 1;
 	var point = Object.assign({},startPoint);
 
-	points.push( Object.assign({}, point));
+	//
 
 	while (ring <= steps){
 		// top left point
-		point.lat += latDeltaDegrees;
-		point.lng -= lngDeltaDegrees(point.lat);
+		//point.lat += latDeltaDegrees;
+		//point.lng -= lngDeltaDegrees(point.lat);
+
+		point = newLocation(point, dist, NORTH_WEST);
+		points.push( Object.assign({}, point));
 
 		for(let direction=0; direction<6; direction++){
 			for( let j=0; j<ring; j++){
 				switch(direction){
 					case 0: // right
-						point.lng += lngDeltaDegrees(point.lat) * 2;
+						//point.lng += lngDeltaDegrees(point.lat) * 2;
+						point = newLocation(point, dist, EAST);
 						break;
 					case 1: //right down
-						point.lat -= latDeltaDegrees;
-						point.lng += lngDeltaDegrees(point.lat);
+						//point.lat -= latDeltaDegrees;
+						//point.lng += lngDeltaDegrees(point.lat);
+						point = newLocation(point, dist, SOUTH_EAST);
+						
 						break;
 					case 2: // left down
-						point.lat -= latDeltaDegrees;
-						point.lng -= lngDeltaDegrees(point.lat);
+						//point.lat -= latDeltaDegrees;
+						//point.lng -= lngDeltaDegrees(point.lat);
+						point = newLocation(point, dist, SOUTH_WEST);
 						break;
 					case 3: // left
-						point.lng -= lngDeltaDegrees(point.lat)*2;
+						//point.lng -= lngDeltaDegrees(point.lat)*2;
+						point = newLocation(point, dist, WEST);
 						break;
 					case 4: // left up
-						point.lat += latDeltaDegrees;
-						point.lng -= lngDeltaDegrees(point.lat);
+						//point.lat += latDeltaDegrees;
+						//point.lng -= lngDeltaDegrees(point.lat);
+						point = newLocation(point, dist, NORTH_WEST);
 						break;
 					case 5: // right up
-						point.lat += latDeltaDegrees;
-						point.lng += lngDeltaDegrees(point.lat);
+						//point.lat += latDeltaDegrees;
+						//point.lng += lngDeltaDegrees(point.lat);
+						point = newLocation(point, dist, NORTH_EAST);
 						break;
 
 				}
@@ -72,9 +116,11 @@ var search = function(lat, lng, callback){
 		}
 	}	
 
-	var username = project.env.USERNAME | "USER";
-	var password = project.env.PASSWORD | "PASS";
-	var provider = project.env.PROVIDER | "google";
+	var username = process.env.USERNAME || "USER";
+	var password = process.env.PASSWORD || "PASS";
+	var provider = process.env.PROVIDER || "google";
+
+	//console.log(username, password, provider);
 
 	pgo.init(username, password, location, provider, function(err) {
 	    if (err) throw err;
@@ -102,7 +148,7 @@ var search = function(lat, lng, callback){
 				lng: pgo.playerInfo.longitude
 			}
 
-			var locationsToScan = getScanPoints(pos, 2);
+			var locationsToScan = getScanPoints(pos, 3);
 			var firstScan = false;
 
 			//callback(locationsToScan, true);
@@ -115,6 +161,10 @@ var search = function(lat, lng, callback){
 	        	console.log("\nHeartbeat:\n");
 	        	console.log('[i] lat/long/alt: : ' + pgo.playerInfo.latitude + ' ' + pgo.playerInfo.longitude + ' ' + pgo.playerInfo.altitude);
 
+	        	callback({
+	        		lat: pgo.playerInfo.latitude,
+	        		lng: pgo.playerInfo.longitude
+	        	}, false, "scan" );
 
 	        	pgo.Heartbeat(function(err,hb) {
 	                
@@ -124,6 +174,7 @@ var search = function(lat, lng, callback){
 	                }
 
 	                var list = [];
+	                var walkCells = [];
 
 
 	                for (var i = hb.cells.length - 1; i >= 0; i--) {
@@ -136,6 +187,7 @@ var search = function(lat, lng, callback){
 	                	var tt = latLng.split(",").map(parseFloat);
 	                	var cellPos = { lat:tt[0], lng: tt[1] };
 
+	                	walkCells.push(cellPos);
 	                	
 	                	//list.push(latLng);
 
@@ -146,7 +198,7 @@ var search = function(lat, lng, callback){
 	                    		pokemon.Type = "nearby";
 	                    		pokemon.DistanceMeters = pkm.DistanceMeters;
 	                    		list.push(pokemon);
-	                        	console.log('[+] There is a ' + pokemon.name + ' at ' + pkm.DistanceMeters.toString() + ' meters');
+	                        	console.log('[+] There is a ' + pokemon.name + ' at ' + pkm.DistanceMeters + ' meters');
 	                    	});
 	                    }
 
@@ -176,8 +228,9 @@ var search = function(lat, lng, callback){
 	                   
 	                }
 					
+					if( walkCells.length > 0 )  callback(walkCells, locationsToScan.length == 0, "cell" );
 	                
-	                if( list.length > 0 ) callback(list, locationsToScan.length == 0 );
+	                if( list.length > 0 ) callback(list, locationsToScan.length == 0, "pokemon" );
 
 	                if( locationsToScan.length > 0){
 	                	pgo.playerInfo.latitude = locationsToScan[0].lat;
@@ -196,7 +249,7 @@ var search = function(lat, lng, callback){
 	                }
 	            });
 
-	        }, 2000);
+	        }, 5000);
 
 			
         
