@@ -41,9 +41,9 @@ io.on('connection', function(socket){
 
   socket.on('search', function(latLng){
     console.log('search: ' + latLng.lat + ", "+ latLng.lng);
-    search(latLng.lat, latLng.lng, function(cells, finish){
+    search(latLng.lat, latLng.lng, function(cells, finish, type){
     	//console.log(cells)
-    	socket.emit("search-results", cells, finish);
+    	socket.emit("search-results", cells, finish, type);
     });
 
   });
